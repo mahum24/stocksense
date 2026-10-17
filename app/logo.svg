@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="240" height="48" viewBox="0 0 240 48">
+  <rect x="2" y="10" width="28" height="28" rx="7" fill="#2a78d6"/>
+  <rect x="8" y="24" width="4" height="8" rx="1" fill="#fff"/>
+  <rect x="14" y="19" width="4" height="13" rx="1" fill="#fff"/>
+  <rect x="20" y="15" width="4" height="17" rx="1" fill="#fff"/>
+  <text x="40" y="32" font-family="Inter, Helvetica, Arial, sans-serif" font-size="22" font-weight="700" fill="#ffffff">Stock<tspan fill="#7fb2f0">Sense</tspan></text>
+</svg>

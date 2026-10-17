@@ -2,6 +2,8 @@
 
     streamlit run app/streamlit_app.py
 """
+from pathlib import Path
+
 import duckdb
 import pandas as pd
 import plotly.express as px
@@ -20,7 +22,6 @@ LAYOUT = dict(font=dict(family="Inter, system-ui, sans-serif", size=13, color=IN
               hoverlabel=dict(font_family="Inter, system-ui, sans-serif"), height=360)
 MODEL_NAMES = {"moving_avg": "8-week moving average", "seasonal_naive": "Same week last year",
                "neural_net": "Neural network", "gradient_boosting": "Gradient boosting (used)"}
-PAGES = ["Overview", "Reorder this week", "Product forecast", "Forecast accuracy", "Data quality", "Customers"]
 
 st.set_page_config(page_title="StockSense", page_icon="📦", layout="wide", initial_sidebar_state="expanded")
 
@@ -33,15 +34,9 @@ html, body, .stMarkdown, button, input { font-family: 'Inter', system-ui, sans-s
 header[data-testid="stHeader"] { background: transparent; }
 section[data-testid="stSidebar"] { background: #10213a; }
 section[data-testid="stSidebar"] * { color: #dfe6f0 !important; }
-section[data-testid="stSidebar"] .brand { font-size: 1.35rem; font-weight: 700; color: #fff !important; letter-spacing: -0.01em; }
-section[data-testid="stSidebar"] .brand span { color: #7fb2f0 !important; }
-section[data-testid="stSidebar"] .tag { font-size: .82rem; color: #9fb0c6 !important; margin: .2rem 0 1.2rem; line-height: 1.45; }
-section[data-testid="stSidebar"] [role="radiogroup"] label { padding: .45rem .7rem; border-radius: 8px; margin-bottom: 2px; width: 100%; }
-section[data-testid="stSidebar"] [role="radiogroup"] label:hover { background: rgba(255,255,255,.07); }
-section[data-testid="stSidebar"] [role="radiogroup"] label:has(input:checked) { background: rgba(127,178,240,.20); }
-section[data-testid="stSidebar"] [role="radiogroup"] label[data-baseweb="radio"] > div:first-child,
-section[data-testid="stSidebar"] [role="radiogroup"] label > div:has(> input) { display: none; }
-section[data-testid="stSidebar"] [role="radiogroup"] input { display: none; }
+[data-testid="stSidebarNav"] a { border-radius: 8px; padding: .35rem .6rem; }
+[data-testid="stSidebarNav"] a:hover { background: rgba(255,255,255,.07); }
+[data-testid="stSidebarNav"] a[aria-current="page"] { background: rgba(127,178,240,.20); }
 section[data-testid="stSidebar"] .foot { font-size: .75rem; color: #8193ab !important; line-height: 1.55; margin-top: 1.6rem; }
 .pg-title { font-size: 1.75rem; font-weight: 700; color: #0b0b0b; letter-spacing: -0.02em; margin: 0; }
 .pg-sub { color: #5f5e5a; font-size: .98rem; margin: .35rem 0 1.3rem; max-width: 920px; line-height: 1.5; }
@@ -101,16 +96,15 @@ if not WAREHOUSE_PATH.exists():
 s = q("SELECT * FROM summary").iloc[0]
 first, last = pd.Timestamp(s.first_week), pd.Timestamp(s.last_week)
 
+st.logo(str(Path(__file__).with_name("logo.svg")), size="large")
 with st.sidebar:
-    st.html('<div class="brand">Stock<span>Sense</span></div>'
-            '<div class="tag">Demand forecasting and smart reordering for a UK wholesale distributor</div>')
-    page = st.radio("Navigate", PAGES, label_visibility="collapsed")
-    st.html(f'<div class="foot">Weekly data {first:%d %b %Y} to {last:%d %b %Y}<br>'
+    st.html(f'<div class="foot">Demand forecasting and smart reordering for a UK wholesale distributor.<br><br>'
+            f'Weekly data {first:%d %b %Y} to {last:%d %b %Y}<br>'
             f'{s.clean_lines:,.0f} invoice lines · {s.products_forecast:,.0f} products forecast<br>'
             'Source: UCI Online Retail II (CC BY 4.0)</div>')
 
 # ---------------------------------------------------------------- Overview
-if page == "Overview":
+def overview():
     header("Overview", "Forecasts weekly demand for the products that drive most of the revenue, turns them into "
                        "reorder suggestions with reasons, and tests the result against real demand.")
     kpis([
@@ -154,7 +148,7 @@ if page == "Overview":
             f'£{s.rule_stock_same_fill - s.stock_forecast:,.0f} less stock tied up on average.</div>')
 
 # ---------------------------------------------------------------- Reorder
-elif page == "Reorder this week":
+def reorder():
     plan = q("SELECT * FROM inv_plan")
     todo = plan[plan["suggested_qty"] > 0]
     total = float(todo["order_cost"].sum())
@@ -197,7 +191,7 @@ elif page == "Reorder this week":
                        type="primary")
 
 # ---------------------------------------------------------------- Product
-elif page == "Product forecast":
+def product():
     header("Product forecast", "Sales history, how the model and the moving average did on held-out weeks, and the "
                                "forecast for the next four weeks with its likely range.")
     products = q("""SELECT p.stock_code, p.description, c.abc, c.xyz, c.revenue FROM inv_classes c
@@ -242,7 +236,7 @@ elif page == "Product forecast":
         st.html(f'<div class="reason"><b>Reorder suggestion: {int(p.suggested_qty):,} units.</b> {p.reason}</div>')
 
 # ---------------------------------------------------------------- Accuracy
-elif page == "Forecast accuracy":
+def accuracy():
     header("Forecast accuracy", "Every model was tested on the last 24 weeks, forecasting only from data available "
                                 "at the time and retrained every four weeks. Error is WAPE: units wrong as a share "
                                 "of units sold.")
@@ -276,7 +270,7 @@ elif page == "Forecast accuracy":
     plot(box2, fig, 300)
 
 # ---------------------------------------------------------------- Data quality
-elif page == "Data quality":
+def data_quality():
     header("Data quality", "The source is an invoice export that was never designed for analysis. Each check records "
                            "what it found, what was done and why, so every number can be traced.")
     dq = q("SELECT * FROM dq_report")
@@ -304,7 +298,7 @@ elif page == "Data quality":
         "times_used": st.column_config.NumberColumn("Lines using it", format="localized")})
 
 # ---------------------------------------------------------------- Customers
-elif page == "Customers":
+def customers():
     header("Customers", "Rule-based segments over the last 12 months, and regular customers who are buying less than "
                         "usual, so the sales team can follow up early.")
     cs = q("SELECT * FROM cust_segments")
@@ -327,7 +321,7 @@ elif page == "Customers":
                  labels={"revenue": "", "segment": ""})
     fig.update_traces(textposition="outside", cliponaxis=False)
     fig.update_layout(showlegend=False)
-    fig.update_xaxes(tickprefix="£")
+    fig.update_xaxes(tickprefix="£", range=[0, seg["revenue"].max() * 1.15])
     plot(box, fig, 360)
     box2 = card(right, "Slipping customers to contact", "Regular customers whose spending in the last 90 days is less "
                                                         "than half their usual rate.")
@@ -338,3 +332,13 @@ elif page == "Customers":
                        "expected_90d": st.column_config.NumberColumn("Usual", format="£%.0f"),
                        "days_since_order": st.column_config.NumberColumn("Days since order", format="%d"),
                        "reason": st.column_config.TextColumn("Why", width="large")})
+
+
+st.navigation([
+    st.Page(overview, title="Overview", icon=":material/dashboard:", url_path="overview", default=True),
+    st.Page(reorder, title="Reorder this week", icon=":material/shopping_cart:", url_path="reorder"),
+    st.Page(product, title="Product forecast", icon=":material/insights:", url_path="product"),
+    st.Page(accuracy, title="Forecast accuracy", icon=":material/target:", url_path="accuracy"),
+    st.Page(data_quality, title="Data quality", icon=":material/fact_check:", url_path="data_quality"),
+    st.Page(customers, title="Customers", icon=":material/groups:", url_path="customers"),
+]).run()
