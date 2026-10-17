@@ -1,0 +1,12 @@
+pandas>=2.1
+numpy>=1.26,<2        # torch 2.2 wheels for Intel Macs are built against NumPy 1.x
+pyarrow>=14
+duckdb>=1.0
+openpyxl>=3.1
+requests>=2.31
+scikit-learn>=1.4
+scipy>=1.11
+torch>=2.2
+plotly>=5.18
+streamlit>=1.40
+pytest>=8
